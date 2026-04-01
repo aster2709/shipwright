@@ -1,54 +1,43 @@
-# Claude App Boilerplate
+# Shipwright
 
-Template repository for building full-scale applications using Claude Code's multi-agent orchestration.
+Multi-agent orchestration for building production applications with Claude Code. 15 specialized agents, 12-phase pipeline, from requirements to deployed and QA-tested.
 
-## What's Included
+## What It Does
 
-- **15 specialized agent definitions** — team lead, requirements analyst, researcher, architect, ui designer, skeleton builder, implementation planner, backend implementer, frontend implementer, test engineer, reviewer, auditor, deployer, monitor, qa tester
-- **3 skills** — `/build` (new app from scratch), `/feature` (add features to existing codebase), `/audit` (gap analysis)
-- **12-phase pipeline** — requirements → research → architecture → design → skeleton → planning → implementation → testing → review → audit → deploy → QA
-- **Project CLAUDE.md** — full context for any new session to understand the design and methodology
+You describe what you want to build. Shipwright orchestrates a team of AI agents that:
+- Ask you clarifying questions and write a PRD
+- Research modern best practices and cost-optimize the stack
+- Design the architecture and visual system
+- Build the skeleton, implement backend + frontend in parallel
+- Write tests, review code, audit against PRD
+- Deploy and QA-test the live app via browser automation
+
+One command: `/build a SaaS invoice platform with Stripe integration`
 
 ## Quick Start
 
-1. Create a new repo from this template:
-   ```bash
-   gh repo create my-app --template aster2709/claude-app-boilerplate --clone --private
-   cd my-app
-   ```
+```bash
+gh repo create my-app --template aster2709/shipwright --clone --private
+cd my-app
+cmux claude-teams --dangerously-skip-permissions
+```
 
-2. Start Claude Code (preferably inside cmux or tmux for split panes):
-   ```bash
-   cmux claude-teams --dangerously-skip-permissions
-   # or: tmux → claude
-   ```
-
-3. Build your app:
-   ```
-   /build a SaaS invoice platform with Stripe integration
-   ```
-
-4. Add features later:
-   ```
-   /feature add Stripe subscription billing for premium accounts
-   ```
-
-5. Run a gap check anytime:
-   ```
-   /audit
-   ```
+Then:
+```
+/build describe what you want to build
+```
 
 ## Skills
 
-| Skill | When to use |
+| Skill | When |
 |---|---|
-| `/build` | Day zero — new app from requirements to deployed and QA-tested |
-| `/feature` | Ongoing — add features to an existing codebase |
-| `/audit` | Anytime — check for gaps between PRD and implementation |
+| `/build` | New app from scratch — full 12-phase pipeline |
+| `/feature` | Add features to an existing codebase — 8 phases |
+| `/audit` | Gap check against PRD anytime |
 
 ## Pipeline
 
-### /build (new project — 12 phases)
+### /build (12 phases)
 
 ```
 Requirements → Research → Architecture → Design → Skeleton
@@ -59,7 +48,7 @@ Implementation Planning → Backend + Frontend (parallel)
                               Testing → Review → Audit → Deploy → QA
 ```
 
-### /feature (existing codebase)
+### /feature (8 phases)
 
 ```
 Requirements → Research → Implementation Plan → Implementers → Review → Audit → Deploy → QA
@@ -70,45 +59,69 @@ Requirements → Research → Implementation Plan → Implementers → Review �
 
 | Agent | Role |
 |---|---|
-| team-lead | Orchestrates full pipeline, enforces completion criteria |
-| requirements-analyst | Asks clarifying questions, writes PRD/feature spec |
-| researcher | Investigates modern best practices, cost analysis |
-| architect | Designs system architecture from PRD + research |
-| ui-designer | Design system, shadcn/ui + Magic UI scaffolding |
-| skeleton-builder | Creates repo structure, configs, empty modules |
-| implementation-planner | Breaks work into parallelizable tasks |
+| team-lead | Orchestrates pipeline, enforces completion, never idles |
+| requirements-analyst | Clarifying questions, PRD with budget/deployment constraints |
+| researcher | Best practices, cost analysis, technology recommendations |
+| architect | System design, API contracts, data model, cost estimates |
+| ui-designer | Design system, shadcn/ui + Magic UI scaffolding via 21st.dev |
+| skeleton-builder | Repo structure, configs, empty modules that compile |
+| implementation-planner | Task breakdown with dependencies and file ownership |
 | backend-implementer | API routes, database, integrations, business logic |
-| frontend-implementer | Pages, components, styling per DESIGN.md |
-| test-engineer | Unit, integration, and component tests |
-| reviewer | Deep code review for security, performance, correctness |
-| auditor | Verifies implementation matches PRD, finds gaps |
-| deployer | Handles deployment to Vercel, Render, Railway, etc. |
-| monitor | Post-deployment verification, CI/CD checks |
+| frontend-implementer | Pages, components, styling per DESIGN.md spec |
+| test-engineer | Unit, integration, component tests |
+| reviewer | Security, performance, correctness review |
+| auditor | PRD coverage verification, gap analysis |
+| deployer | Platform deployment, env config, cost-aware |
+| monitor | Post-deploy health checks, CI/CD verification |
 | qa-tester | Live browser testing via Chrome DevTools MCP |
+
+## How Agents Communicate
+
+1. **Direct messaging** — teammates talk to each other for questions and handoffs
+2. **Shared task list** — work items with dependencies and status tracking
+3. **docs/ folder** — formal outputs that become the project's source of truth
+
+The team lead is the heartbeat — actively checks progress, spawns next phases immediately, never waits passively.
+
+## Documentation
+
+Agents produce these artifacts in `docs/`:
+
+| File | Producer | Contents |
+|---|---|---|
+| PRD.md | requirements-analyst | Product requirements, user stories, constraints |
+| RESEARCH.md | researcher | Technology recommendations with cost analysis |
+| ARCHITECTURE.md | architect | System design, API contracts, deployment plan |
+| DESIGN.md | ui-designer | Visual design system, component library choices |
+| IMPLEMENTATION_PLAN.md | implementation-planner | Tasks with dependencies and file ownership |
+| QA-REPORT.md | qa-tester | Browser test results with screenshots |
 
 ## Requirements
 
 - Claude Code with Claude Max plan
-- tmux (`brew install tmux`) or [cmux](https://cmux.com) (recommended)
-- Agent Teams enabled (included in .claude/settings.json)
-- Chrome DevTools MCP (for QA testing)
+- [cmux](https://cmux.com) (recommended) or tmux for split-pane agent visibility
+- Chrome DevTools MCP for QA testing
 
-## Recommended System Setup
+## Recommended
 
-- [Honcho](https://honcho.dev) plugin — persistent memory across projects
-- [cmux](https://cmux.com) — terminal built for coding agents with notification rings
+- [Honcho](https://honcho.dev) plugin — persistent memory across projects and sessions
 - 21st.dev Magic components — UI design inspiration
 
-## Documentation
+## Self-Improvement
 
-All agent outputs are saved to `docs/`:
-- `PRD.md` — Product requirements
-- `RESEARCH.md` — Technical research and recommendations
-- `ARCHITECTURE.md` — System design with cost estimates
-- `DESIGN.md` — Visual design system specification
-- `IMPLEMENTATION_PLAN.md` — Task breakdown with dependencies
-- `QA-REPORT.md` — Browser testing results with screenshots
+After successful builds, reusable patterns are saved to `.claude/skills/learnings/`. Future builds reference these to avoid rediscovering the same solutions. The more you build, the better it gets.
 
-## Skill Learning
+## Architecture
 
-After successful builds, reusable patterns are saved to `.claude/skills/learnings/` so future builds benefit from past experience. This is the boilerplate's self-improvement mechanism.
+```
+cmux / tmux                     (observe agents in split panes)
+  └── Claude Code Agent Teams   (agent runtime, direct messaging, shared tasks)
+       ├── team-lead            (orchestrator — heartbeat, completion enforcement)
+       ├── specialists          (15 agents, each owns one phase)
+       └── docs/                (inter-agent communication via artifacts)
+            └── Honcho          (persistent memory across projects)
+```
+
+## License
+
+MIT
