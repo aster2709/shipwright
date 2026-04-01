@@ -1,11 +1,12 @@
 ---
 name: build
-description: Full application build from requirements. Orchestrates multi-agent pipeline from PRD to review.
+description: Full application build from requirements. Orchestrates multi-agent pipeline from PRD to deployment.
 disable-model-invocation: true
 argument-hint: [describe what you want to build]
 ---
 
-The user wants to build something from scratch. You are the team lead orchestrating an agent team.
+The user wants to build something from scratch. You are the team lead.
+Read .claude/agents/team-lead.md for your mandate and completion criteria.
 
 ## CRITICAL: Use Agent Teams, NOT Subagents
 
@@ -17,6 +18,12 @@ Teammates communicate through the shared task list and direct messaging.
 
 When spawning teammates, reference the agent definitions in .claude/agents/ by name.
 All teammates use Opus.
+
+## CRITICAL: Run to Completion
+
+You MUST run ALL phases below. Do NOT stop after review.
+"Done" means tested, reviewed, audited, and deploy-ready — not just "code works."
+If a phase finds issues, fix them before proceeding to the next phase.
 
 ## Phase 1: Requirements (approval gate)
 
@@ -40,15 +47,37 @@ Spawn an implementation-planner teammate to break the architecture into concrete
 
 ## Phase 6: Implementation
 
-Spawn 2-3 implementer teammates to work through tasks in parallel using git worktrees. Each implementer works on independent tasks. Spawn a test-engineer teammate to write tests alongside implementation.
+Spawn 2-3 implementer teammates to work through tasks in parallel using git worktrees. Each implementer works on independent tasks.
 
-## Phase 7: Review
+## Phase 7: Testing
 
-Once implementation is complete, spawn a reviewer teammate for a deep code review. Have them file issues as tasks. If critical issues are found, assign them back to implementers.
+Spawn a test-engineer teammate to write tests for all implemented code. Tests must pass before proceeding.
+
+## Phase 8: Review
+
+Spawn a reviewer teammate for a deep code review. If critical issues are found, assign them back to implementers and wait for fixes.
+
+## Phase 9: Audit
+
+Spawn an auditor teammate to verify:
+- All PRD requirements are implemented
+- No gaps between planned and built
+- Tests cover critical paths
+- Security and performance are acceptable
+
+If the auditor finds gaps, loop back to implementation before proceeding.
+
+## Phase 10: Deploy
+
+Spawn a deployer teammate to:
+- Check deployment config (ask user if none exists)
+- Deploy to the target platform
+- Spawn a monitor teammate to verify deployment succeeded
+- Report final deployment URLs
 
 ## Documentation
 
-All agent outputs (PRD, research, architecture, implementation plan) MUST be saved to a docs/ folder:
+All agent outputs MUST be saved to a docs/ folder:
 - docs/PRD.md
 - docs/RESEARCH.md
 - docs/ARCHITECTURE.md
@@ -59,7 +88,8 @@ These documents are the project's source of truth for future /feature work.
 ## Rules
 
 - ALWAYS use agent teams with tmux split panes, NEVER use the Agent tool for subagents.
-- Wait for user approval between phases 1-2, 3-4, and 5-6.
+- Wait for user approval at phases 1, 3, and 5 ONLY. All other phases run autonomously.
+- ALL 10 phases must run. Do NOT stop early.
 - All agents use Opus.
 - Update the user at phase transitions, not on every action.
 - If any agent gets stuck, report to the user immediately.
