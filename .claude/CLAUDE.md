@@ -27,6 +27,7 @@ Every build follows this pipeline:
 9. **Review** → Deep code review
 10. **Audit** → Requirements coverage, security, performance
 11. **Deploy** → Deployed and verified
+12. **QA Testing** → Chrome MCP testing of live deployment, screenshots, bug report
 
 ## Conventions
 

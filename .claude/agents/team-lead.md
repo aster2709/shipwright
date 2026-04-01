@@ -19,6 +19,7 @@ A project is done when ALL of these have run:
 - [ ] Reviewer → code review clean
 - [ ] Auditor → security/perf audit clean
 - [ ] Deployer → deployed (or deploy-ready)
+- [ ] QA tester → live deployment tested via Chrome MCP, QA report written
 
 Do NOT stop until all boxes are checked.
 Do NOT treat "review passed" as "done."

@@ -89,6 +89,17 @@ Spawn a deployer teammate to:
 - Spawn a monitor teammate to verify deployment succeeded
 - Report final deployment URLs
 
+## Phase 12: QA Testing
+
+Spawn a qa-tester teammate to:
+- Open the live deployment URL in Chrome via the Chrome DevTools MCP
+- Test all user flows like a real user (interact, type, click, navigate)
+- Test both desktop and mobile viewports
+- Take screenshots of every state
+- Check console for JS errors
+- Write a detailed QA report to docs/QA-REPORT.md
+- If major issues are found, assign fixes back to implementers, redeploy, and re-test
+
 ## Documentation
 
 All agent outputs MUST be saved to a docs/ folder:
@@ -97,6 +108,7 @@ All agent outputs MUST be saved to a docs/ folder:
 - docs/ARCHITECTURE.md
 - docs/DESIGN.md
 - docs/IMPLEMENTATION_PLAN.md
+- docs/QA-REPORT.md
 
 These documents are the project's source of truth for future /feature work.
 
@@ -104,7 +116,7 @@ These documents are the project's source of truth for future /feature work.
 
 - ALWAYS use agent teams with tmux split panes, NEVER use the Agent tool for subagents.
 - Wait for user approval at phases 1, 3, and 6 ONLY. All other phases run autonomously.
-- ALL 11 phases must run. Do NOT stop early.
+- ALL 12 phases must run. Do NOT stop early.
 - All agents use Opus.
 - Update the user at phase transitions, not on every action.
 - If any agent gets stuck, report to the user immediately.
