@@ -99,8 +99,24 @@ After a successful build, the team lead should:
 3. Example: "next-groq-streaming.md" — the exact pattern for Next.js + Groq streaming that worked
 4. Future builds reference these learnings to avoid rediscovering the same solutions
 
-## Tools This Boilerplate Expects
+## Execution Modes
 
+### acpx Flow (recommended — deterministic)
+```bash
+# Edit .acpx-flows/build-input.json with your requirement, then:
+acpx flow run .acpx-flows/build.flow.ts --input-file .acpx-flows/build-input.json
+```
+The graph engine guarantees all 12 phases run. Retries on build failures. Loops back on review issues. Checkpoint pauses at approval gates. No skipping, no early stops.
+
+### Claude Code Skill (fallback — flexible but non-deterministic)
+```
+/build describe what you want
+```
+Uses Agent Teams with skill-based orchestration. More flexible but depends on the LLM following all phases.
+
+## Tools This Template Expects
+
+- acpx (`npm install -g acpx@latest`) — deterministic graph execution engine
 - Claude Code with Agent Teams enabled (in .claude/settings.json)
 - Chrome DevTools MCP — for QA testing live deployments
 - 21st.dev Magic components — for UI design inspiration via component_inspiration
