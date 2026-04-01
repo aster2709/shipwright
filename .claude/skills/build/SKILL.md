@@ -40,13 +40,13 @@ Spawn an architect teammate. Give them the PRD and research document. Have them 
 ## Phase 4: Design
 
 Spawn a ui-designer teammate. Give them the PRD and architecture document. They will:
+- Browse 21st.dev community components via `component_inspiration` for reusable patterns
 - Research design inspiration via WebSearch (Dribbble, Awwwards, design blogs)
 - Define the complete design system → docs/DESIGN.md
-- Generate key components using 21st.dev Magic MCP and v0 MCP
-- Scaffold shadcn/ui with custom theme + Magic UI animated components
-- Output: DESIGN.md + configured component libraries + pre-built component files
+- Scaffold shadcn/ui with custom theme + framer-motion + next-themes
+- Output: DESIGN.md + configured component libraries + reference code snippets
 
-The ui-designer uses external MCP tools (21st.dev, v0) to generate production-quality components — not just specs.
+The ui-designer uses `component_inspiration` to browse real community components — fast lookups, not slow generation.
 
 ## Phase 5: Skeleton
 
