@@ -12,22 +12,41 @@ You describe what you want to build. Shipwright orchestrates a team of AI agents
 - Write tests, review code, audit against PRD
 - Deploy and QA-test the live app via browser automation
 
-One command: `/build a SaaS invoice platform with Stripe integration`
-
 ## Quick Start
 
 ```bash
 gh repo create my-app --template aster2709/shipwright --clone --private
 cd my-app
-cmux claude-teams --dangerously-skip-permissions
 ```
 
-Then:
-```
-/build describe what you want to build
+### Option A: acpx (recommended — deterministic)
+
+The graph engine drives every phase. No skipping, no idle agents, automatic retries.
+
+```bash
+# Edit your requirement
+nano .acpx-flows/build-input.json
+
+# Run the pipeline
+acpx flow run .acpx-flows/build.flow.ts --input-file .acpx-flows/build-input.json
 ```
 
-## Skills
+### Option B: Claude Code Skills (flexible, human-in-the-loop)
+
+```bash
+claude --dangerously-skip-permissions
+# Then: /build a SaaS invoice platform with Stripe integration
+```
+
+## Execution Modes
+
+| Mode | Engine | Completion | Best for |
+|---|---|---|---|
+| acpx flow | Graph engine (deterministic) | Guaranteed — all nodes must complete | Production builds, reliability |
+| /build skill | LLM orchestrator (Agent Teams) | Best-effort — LLM may idle or skip | Exploratory work, flexibility |
+| /feature skill | LLM orchestrator (Agent Teams) | Best-effort | Quick feature additions |
+
+## Skills (for Agent Teams mode)
 
 | Skill | When |
 |---|---|
@@ -99,11 +118,12 @@ Agents produce these artifacts in `docs/`:
 ## Requirements
 
 - Claude Code with Claude Max plan
-- [cmux](https://cmux.com) (recommended) or tmux for split-pane agent visibility
-- Chrome DevTools MCP for QA testing
+- [acpx](https://github.com/openclaw/acpx) (`npm install -g acpx@latest`) — deterministic graph execution
+- Chrome DevTools MCP — for QA testing
 
 ## Recommended
 
+- [cmux](https://cmux.com) or tmux — split-pane agent visibility
 - [Honcho](https://honcho.dev) plugin — persistent memory across projects and sessions
 - 21st.dev Magic components — UI design inspiration
 
@@ -114,13 +134,19 @@ After successful builds, reusable patterns are saved to `.claude/skills/learning
 ## Architecture
 
 ```
-cmux / tmux                     (observe agents in split panes)
-  └── Claude Code Agent Teams   (agent runtime, direct messaging, shared tasks)
-       ├── team-lead            (orchestrator — heartbeat, completion enforcement)
-       ├── specialists          (15 agents, each owns one phase)
-       └── docs/                (inter-agent communication via artifacts)
-            └── Honcho          (persistent memory across projects)
+cmux / tmux                          (observe agents in split panes)
+  └── acpx                           (deterministic graph engine — schedules phases)
+       └── Claude Code               (agent runtime — executes each node)
+            ├── 15 agent definitions  (each owns one phase)
+            ├── docs/                 (inter-agent communication via artifacts)
+            └── Honcho               (persistent memory across projects)
 ```
+
+### Why acpx over LLM-as-scheduler?
+
+LLMs used as orchestrators idle between phases, skip steps, and forget to check on teammates.
+acpx is a graph engine — when node A completes, node B fires immediately. No forgetting, no idling.
+The LLM does what it's good at (reasoning, coding). The graph engine does what it's good at (scheduling, retries, branching).
 
 ## License
 
