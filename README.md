@@ -4,8 +4,8 @@ Template repository for building full-scale applications using Claude Code's mul
 
 ## What's Included
 
-- **8 specialized agent definitions** — requirements analyst, researcher, architect, skeleton builder, implementation planner, implementer, test engineer, reviewer
-- **`/build` skill** — one-command orchestration that runs the full pipeline from requirements to review
+- **11 specialized agent definitions** — requirements analyst, researcher, architect, skeleton builder, implementation planner, implementer, test engineer, reviewer, deployer, monitor, auditor
+- **3 skills** — `/build` (new app from scratch), `/feature` (add features to existing codebase), `/audit` (gap analysis)
 - **Project CLAUDE.md** — engineering methodology and conventions
 - **Agent Teams enabled** — parallel agents with tmux monitoring
 
@@ -13,7 +13,7 @@ Template repository for building full-scale applications using Claude Code's mul
 
 1. Create a new repo from this template:
    ```bash
-   gh repo create my-app --template your-username/claude-app-boilerplate --clone
+   gh repo create my-app --template aster2709/claude-app-boilerplate --clone --private
    cd my-app
    ```
 
@@ -27,14 +27,23 @@ Template repository for building full-scale applications using Claude Code's mul
    /build a SaaS invoice platform with Stripe integration
    ```
 
-4. The orchestrator will:
-   - Ask you clarifying questions (PRD phase)
-   - Research best practices
-   - Design the architecture (requires your approval)
-   - Create the repo skeleton
-   - Plan the implementation (requires your approval)
-   - Build features in parallel with multiple agents
-   - Run a deep code review
+4. Add features later:
+   ```
+   /feature add Stripe subscription billing for premium accounts
+   ```
+
+5. Run a gap check anytime:
+   ```
+   /audit
+   ```
+
+## Skills
+
+| Skill | When to use |
+|---|---|
+| `/build` | Day zero — new app from requirements to working code |
+| `/feature` | Ongoing — add features to an existing codebase |
+| `/audit` | Anytime — check for gaps between PRD and implementation |
 
 ## Requirements
 
@@ -44,6 +53,8 @@ Template repository for building full-scale applications using Claude Code's mul
 
 ## Agent Pipeline
 
+### /build (new project)
+
 ```
 Requirements Analyst → Researcher → Architect → Skeleton Builder
     ↓ (approval)                        ↓ (approval)
@@ -51,3 +62,29 @@ Implementation Planner → Implementers (parallel) + Test Engineer
     ↓ (approval)                        ↓
                                     Reviewer
 ```
+
+### /feature (existing codebase)
+
+```
+Requirements Analyst → Researcher → Implementation Planner
+    ↓ (approval)                        ↓ (approval)
+Implementers (parallel) + Test Engineer → Reviewer → Auditor
+                                                        ↓
+                                            Deployer → Monitor
+```
+
+## Agents
+
+| Agent | Role |
+|---|---|
+| requirements-analyst | Asks clarifying questions, writes PRD/feature spec |
+| researcher | Investigates modern best practices and patterns |
+| architect | Designs system architecture from PRD + research |
+| skeleton-builder | Creates repo structure, configs, empty modules |
+| implementation-planner | Breaks work into parallelizable tasks |
+| implementer | Builds features in isolated git worktrees |
+| test-engineer | Writes unit, integration, and component tests |
+| reviewer | Deep code review for security, performance, correctness |
+| auditor | Verifies implementation matches PRD, finds gaps |
+| deployer | Handles deployment to Vercel, Render, Railway, etc. |
+| monitor | Post-deployment verification, CI/CD checks, health monitoring |
