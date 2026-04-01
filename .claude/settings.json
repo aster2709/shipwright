@@ -1,5 +1,27 @@
 {
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "hooks": {
+    "TeammateIdle": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A teammate just went idle. Check the completion checklist in .claude/agents/team-lead.md — are all boxes checked? If not, identify the next uncompleted phase and spawn a teammate for it immediately. Do NOT go idle yourself."
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "A task was just completed. Check if this unblocks any dependent tasks. If it does, notify the relevant teammate or spawn the next phase. Keep momentum — do not pause to summarize."
+          }
+        ]
+      }
+    ]
   }
 }

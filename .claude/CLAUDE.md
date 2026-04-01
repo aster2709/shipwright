@@ -23,8 +23,11 @@ This boilerplate uses structured orchestration:
 - Each phase has a dedicated agent with a focused mandate
 - The team lead enforces completion — ALL phases must run
 - Approval gates at phases 1, 3, and 6 only — everything else runs autonomously
-- Agents communicate through docs/ folder (PRD, RESEARCH, ARCHITECTURE, DESIGN, IMPLEMENTATION_PLAN)
-- Each agent reads the previous agent's output as input
+- Agents communicate through three channels:
+  1. Direct messaging — teammates talk to each other for questions and handoffs
+  2. Shared task list — work items, dependencies, status tracking
+  3. docs/ folder — formal outputs that become the project's source of truth
+- The team lead is the heartbeat — actively checks progress, never idles passively
 
 ## The 12-Phase Pipeline
 
