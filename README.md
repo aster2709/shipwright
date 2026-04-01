@@ -4,7 +4,7 @@ Template repository for building full-scale applications using Claude Code's mul
 
 ## What's Included
 
-- **11 specialized agent definitions** — requirements analyst, researcher, architect, skeleton builder, implementation planner, implementer, test engineer, reviewer, deployer, monitor, auditor
+- **12 specialized agent definitions** — team lead, requirements analyst, researcher, architect, skeleton builder, implementation planner, implementer, test engineer, reviewer, auditor, deployer, monitor
 - **3 skills** — `/build` (new app from scratch), `/feature` (add features to existing codebase), `/audit` (gap analysis)
 - **Project CLAUDE.md** — engineering methodology and conventions
 - **Agent Teams enabled** — parallel agents with tmux monitoring
@@ -77,6 +77,7 @@ Implementers (parallel) + Test Engineer → Reviewer → Auditor
 
 | Agent | Role |
 |---|---|
+| team-lead | Orchestrates the full pipeline, enforces completion criteria |
 | requirements-analyst | Asks clarifying questions, writes PRD/feature spec |
 | researcher | Investigates modern best practices and patterns |
 | architect | Designs system architecture from PRD + research |
