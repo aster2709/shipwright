@@ -142,14 +142,13 @@ const flow = {
       nodeType: 'compute' as const,
       async run() {
         const { marked } = await import('marked')
-        const { default: TerminalRenderer } = await import('marked-terminal')
+        const { markedTerminal } = await import('marked-terminal')
         const clack = await import('@clack/prompts')
 
         const prdPath = resolve(process.cwd(), 'docs/PRD.md')
         const prd = readFileSync(prdPath, 'utf-8')
 
-        // @ts-ignore - marked-terminal typing mismatch
-        marked.use({ renderer: new TerminalRenderer() })
+        marked.use(markedTerminal())
         const rendered = marked.parse(prd) as string
 
         clack.log.step('Product Requirements Document')
