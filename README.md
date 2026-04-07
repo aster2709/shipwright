@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/aster2709/shipwright/stargazers"><img src="https://img.shields.io/github/stars/aster2709/shipwright?style=flat-square&color=yellow" alt="Stars" /></a>
-  <a href="https://github.com/aster2709/shipwright/blob/main/LICENSE"><img src="https://img.shields.io/github/license/aster2709/shipwright?style=flat-square" alt="License" /></a>
+  <a href="https://github.com/aster2709/shipwright/blob/main/LICENSE"><img src="https://img.shields.io/github/license/aster2709/shipwright?style=flat-square&t=1" alt="License" /></a>
   <a href="https://github.com/aster2709/shipwright"><img src="https://img.shields.io/badge/TypeScript-blue?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" /></a>
   <a href="https://x.com/0x_aster"><img src="https://img.shields.io/badge/X-@0x__aster-black?style=flat-square&logo=x&logoColor=white" alt="X" /></a>
 </p>
