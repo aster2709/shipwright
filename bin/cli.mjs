@@ -93,35 +93,19 @@ async function main() {
 
   const agentBin = resolve(ROOT, 'node_modules/@agentclientprotocol/claude-agent-acp/dist/index.js')
 
-  let stdout = ''
-
   const child = spawn(
     'acpx',
     ['--approve-all', '--agent', `node ${agentBin}`, 'flow', 'run', flowFile, '--input-json', input],
     {
-      stdio: ['inherit', 'pipe', 'inherit'],
+      stdio: 'inherit',
       cwd: ROOT,
-      env: { ...process.env, CLAUDE_CODE_SIMPLE: '1' },
+      env: process.env,
     }
   )
 
-  child.stdout.on('data', (chunk) => {
-    const text = chunk.toString()
-    stdout += text
-    process.stdout.write(text)
-  })
-
   child.on('close', (code) => {
-    const isCheckpoint = stdout.includes('"status": "waiting"') || stdout.includes('waitingOn')
-
-    if (isCheckpoint) {
-      const waitingOn = stdout.match(/"waitingOn":\s*"([^"]+)"/)?.[1] || 'checkpoint'
-      p.log.step(`Paused at checkpoint: ${waitingOn}`)
-      p.log.info('Review the output above, then resume with:')
-      p.log.message(`  acpx --approve-all flow resume`)
-      p.outro('Waiting for your approval.')
-    } else if (code === 0) {
-      p.outro('Build complete. Check docs/ for artifacts.')
+    if (code === 0) {
+      p.outro('Pipeline paused or complete. Check docs/ for artifacts.')
     } else {
       p.log.error(`Pipeline exited with code ${code}`)
     }

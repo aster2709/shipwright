@@ -29,12 +29,37 @@ function readDoc(name: string): string {
   return `Read docs/${name} for context from previous phases.`
 }
 
-function gatherContext(outputs: any): string {
-  const parts: string[] = []
-  for (const key of ['answer_1', 'answer_2', 'answer_3']) {
-    if (outputs[key]) parts.push(outputs[key])
+function qaHistory(outputs: any, upTo: number): string {
+  const lines: string[] = []
+  for (let i = 1; i < upTo; i++) {
+    const q = outputs[`ask_q${i}`]?.question
+    const a = outputs[`answer_${i}`]
+    if (q && a) lines.push(`Q${i}: ${q}\nA${i}: ${a}`)
   }
-  return parts.length > 0 ? `\n\nUser's answers so far:\n${parts.join('\n')}` : ''
+  return lines.length > 0 ? `\nPrevious Q&A:\n${lines.join('\n\n')}` : ''
+}
+
+const REQ_MANDATE = [
+  'You are a senior product manager. Read .claude/agents/requirements-analyst.md for your full mandate.',
+  '',
+  'You need to cover: target users, core features, authentication, data model,',
+  'integrations, budget, deployment, and mobile/responsive needs.',
+  '',
+  'Ask exactly ONE focused question. Be specific to what the user is building.',
+  'Do not ask compound questions. One question only.',
+].join('\n')
+
+function askPrompt(input: any, outputs: any, round: number, total: number, hint: string): string {
+  return [
+    REQ_MANDATE,
+    '',
+    `The user wants to build: ${input.requirement}`,
+    qaHistory(outputs, round),
+    '',
+    `This is question ${round} of ${total}. ${hint}`,
+    '',
+    ...exactJson(['{ "question": "your single question here" }'])
+  ].join('\n')
 }
 
 const flow = {
@@ -50,94 +75,42 @@ const flow = {
   startAt: 'ask_q1',
 
   nodes: {
-    // ── Phase 1: Dynamic requirements gathering (3 Q&A rounds) ──
+    // ── Phase 1: Dynamic requirements gathering (5 single-question rounds) ──
 
     ask_q1: {
-      nodeType: 'acp' as const,
-      session: MAIN_SESSION,
-      async prompt({ input }: any) {
-        return [
-          'You are a senior product manager. Read .claude/agents/requirements-analyst.md for your full mandate.',
-          '',
-          `The user wants to build: ${input.requirement}`,
-          '',
-          'Your job is to gather enough information to write a complete PRD.',
-          'You need to cover: target users/personas, core user flows, authentication model,',
-          'data model (entities + relationships), third-party integrations, performance/scale,',
-          'infrastructure budget, deployment preferences, and mobile/responsive needs.',
-          '',
-          'This is round 1 of 3. Ask your 2-3 most important clarifying questions.',
-          'Focus on the biggest unknowns first. Be specific to what the user is building.',
-          'Format each question on its own line.',
-          '',
-          ...exactJson([
-            '{ "questions": "your 2-3 questions here, each on a new line" }'
-          ])
-        ].join('\n')
-      },
+      nodeType: 'acp' as const, session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) { return askPrompt(input, outputs, 1, 5, 'Start with the most fundamental question about scope or users.') },
       parse: (text: string) => JSON.parse(text)
     },
-
-    answer_1: {
-      nodeType: 'prompt' as const,
-      message: async ({ outputs }: any) => outputs.ask_q1?.questions || 'Describe your requirements:',
-    },
+    answer_1: { nodeType: 'prompt' as const, message: async ({ outputs }: any) => outputs.ask_q1?.question || 'Describe your requirements:' },
 
     ask_q2: {
-      nodeType: 'acp' as const,
-      session: MAIN_SESSION,
-      async prompt({ input, outputs }: any) {
-        return [
-          'You are a senior product manager. Read .claude/agents/requirements-analyst.md for your full mandate.',
-          '',
-          `The user wants to build: ${input.requirement}`,
-          `\nRound 1 Q&A:\nQ: ${outputs.ask_q1?.questions}\nA: ${outputs.answer_1}`,
-          '',
-          'This is round 2 of 3. Based on what you now know, ask 2-3 MORE clarifying questions.',
-          'Cover areas not yet addressed from: data model, integrations, auth flows,',
-          'deployment target, budget constraints, error handling, mobile support.',
-          'Skip anything already answered. Be specific.',
-          '',
-          ...exactJson([
-            '{ "questions": "your 2-3 questions here, each on a new line" }'
-          ])
-        ].join('\n')
-      },
+      nodeType: 'acp' as const, session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) { return askPrompt(input, outputs, 2, 5, 'Focus on authentication, data model, or core features.') },
       parse: (text: string) => JSON.parse(text)
     },
-
-    answer_2: {
-      nodeType: 'prompt' as const,
-      message: async ({ outputs }: any) => outputs.ask_q2?.questions || 'Any other details?',
-    },
+    answer_2: { nodeType: 'prompt' as const, message: async ({ outputs }: any) => outputs.ask_q2?.question || 'Details?' },
 
     ask_q3: {
-      nodeType: 'acp' as const,
-      session: MAIN_SESSION,
-      async prompt({ input, outputs }: any) {
-        return [
-          'You are a senior product manager. Read .claude/agents/requirements-analyst.md for your full mandate.',
-          '',
-          `The user wants to build: ${input.requirement}`,
-          `\nRound 1 Q&A:\nQ: ${outputs.ask_q1?.questions}\nA: ${outputs.answer_1}`,
-          `\nRound 2 Q&A:\nQ: ${outputs.ask_q2?.questions}\nA: ${outputs.answer_2}`,
-          '',
-          'This is round 3 of 3 (final round). Ask any remaining questions about:',
-          'edge cases, scope boundaries, non-goals, constraints, or anything still ambiguous.',
-          'If everything is clear, ask about priorities and what the MVP should include vs defer.',
-          '',
-          ...exactJson([
-            '{ "questions": "your final 2-3 questions, each on a new line" }'
-          ])
-        ].join('\n')
-      },
+      nodeType: 'acp' as const, session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) { return askPrompt(input, outputs, 3, 5, 'Cover deployment, budget, or integrations.') },
       parse: (text: string) => JSON.parse(text)
     },
+    answer_3: { nodeType: 'prompt' as const, message: async ({ outputs }: any) => outputs.ask_q3?.question || 'Details?' },
 
-    answer_3: {
-      nodeType: 'prompt' as const,
-      message: async ({ outputs }: any) => outputs.ask_q3?.questions || 'Anything else?',
+    ask_q4: {
+      nodeType: 'acp' as const, session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) { return askPrompt(input, outputs, 4, 5, 'Cover design preferences or mobile/responsive needs.') },
+      parse: (text: string) => JSON.parse(text)
     },
+    answer_4: { nodeType: 'prompt' as const, message: async ({ outputs }: any) => outputs.ask_q4?.question || 'Details?' },
+
+    ask_q5: {
+      nodeType: 'acp' as const, session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) { return askPrompt(input, outputs, 5, 5, 'Final question: edge cases, non-goals, MVP scope, or anything still unclear.') },
+      parse: (text: string) => JSON.parse(text)
+    },
+    answer_5: { nodeType: 'prompt' as const, message: async ({ outputs }: any) => outputs.ask_q5?.question || 'Anything else?' },
 
     // Write PRD from all gathered context
     write_prd: {
@@ -149,10 +122,7 @@ const flow = {
           '',
           `The user wants to build: ${input.requirement}`,
           '',
-          'Clarifying Q&A (3 rounds):',
-          `\nRound 1:\nQ: ${outputs.ask_q1?.questions}\nA: ${outputs.answer_1}`,
-          `\nRound 2:\nQ: ${outputs.ask_q2?.questions}\nA: ${outputs.answer_2}`,
-          `\nRound 3:\nQ: ${outputs.ask_q3?.questions}\nA: ${outputs.answer_3}`,
+          qaHistory(outputs, 6),
           '',
           'Write a complete PRD to docs/PRD.md using all the context above.',
           'Include: overview, personas, user stories, data model, API surface, constraints.',
@@ -509,13 +479,17 @@ const flow = {
   },
 
   edges: [
-    // Phase 1: Dynamic Q&A → PRD → approval
+    // Phase 1: 5 rounds of single-question Q&A → PRD → approval
     { from: 'ask_q1', to: 'answer_1' },
     { from: 'answer_1', to: 'ask_q2' },
     { from: 'ask_q2', to: 'answer_2' },
     { from: 'answer_2', to: 'ask_q3' },
     { from: 'ask_q3', to: 'answer_3' },
-    { from: 'answer_3', to: 'write_prd' },
+    { from: 'answer_3', to: 'ask_q4' },
+    { from: 'ask_q4', to: 'answer_4' },
+    { from: 'answer_4', to: 'ask_q5' },
+    { from: 'ask_q5', to: 'answer_5' },
+    { from: 'answer_5', to: 'write_prd' },
     { from: 'write_prd', to: 'approve_prd' },
     { from: 'approve_prd', to: 'research' },
 
