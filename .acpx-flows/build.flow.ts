@@ -1,4 +1,6 @@
 import { defineFlow } from 'acpx/flows'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 
 /**
  * Shipwright Build Flow — deterministic 12-phase pipeline
@@ -135,10 +137,61 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 1 gate: user approval
-    approve_prd: {
-      nodeType: 'checkpoint' as const,
-      statusDetail: 'Waiting for PRD approval. Review docs/PRD.md and approve to continue.'
+    // Phase 1 gate: render PRD + interactive review
+    review_prd: {
+      nodeType: 'compute' as const,
+      async run() {
+        const { marked } = await import('marked')
+        const { default: TerminalRenderer } = await import('marked-terminal')
+        const clack = await import('@clack/prompts')
+
+        const prdPath = resolve(process.cwd(), 'docs/PRD.md')
+        const prd = readFileSync(prdPath, 'utf-8')
+
+        // @ts-ignore - marked-terminal typing mismatch
+        marked.use({ renderer: new TerminalRenderer() })
+        const rendered = marked.parse(prd) as string
+
+        clack.log.step('Product Requirements Document')
+        process.stderr.write('\n' + rendered + '\n')
+
+        const decision = await clack.select({
+          message: 'Do you approve this PRD?',
+          options: [
+            { value: 'approve', label: 'Approve', hint: 'continue to research + architecture' },
+            { value: 'suggest', label: 'Suggest changes', hint: 'describe what to change' },
+          ],
+        })
+
+        if (clack.isCancel(decision)) throw new Error('User cancelled')
+        return { approved: decision === 'approve', decision }
+      }
+    },
+
+    collect_suggestion: {
+      nodeType: 'prompt' as const,
+      message: 'What changes do you want in the PRD?',
+    },
+
+    revise_prd: {
+      nodeType: 'acp' as const,
+      session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) {
+        return [
+          'You are a senior product manager. Read .claude/agents/requirements-analyst.md for your full mandate.',
+          '',
+          'The user reviewed the PRD at docs/PRD.md and requested changes:',
+          `"${outputs.collect_suggestion}"`,
+          '',
+          'Read the current docs/PRD.md, incorporate the requested changes, and rewrite it.',
+          'Keep everything that was correct. Only modify what the user asked to change.',
+          '',
+          ...exactJson([
+            '{ "status": "revised", "prd_path": "docs/PRD.md", "changes": "..." }'
+          ])
+        ].join('\n')
+      },
+      parse: (text: string) => JSON.parse(text)
     },
 
     // ── Phase 2: Research ──
@@ -490,8 +543,19 @@ const flow = {
     { from: 'answer_4', to: 'ask_q5' },
     { from: 'ask_q5', to: 'answer_5' },
     { from: 'answer_5', to: 'write_prd' },
-    { from: 'write_prd', to: 'approve_prd' },
-    { from: 'approve_prd', to: 'research' },
+    { from: 'write_prd', to: 'review_prd' },
+    {
+      from: 'review_prd',
+      switch: {
+        on: '$.approved',
+        cases: {
+          true: 'research',
+          false: 'collect_suggestion'
+        }
+      }
+    },
+    { from: 'collect_suggestion', to: 'revise_prd' },
+    { from: 'revise_prd', to: 'review_prd' },
 
     // Phase 2 → 3 → approval
     { from: 'research', to: 'architecture' },
