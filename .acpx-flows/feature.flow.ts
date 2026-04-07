@@ -1,3 +1,5 @@
+import { defineFlow } from 'acpx/flows'
+
 /**
  * Shipwright Feature Flow — add features to an existing codebase
  *
@@ -7,7 +9,7 @@
  *   acpx flow run .acpx-flows/feature.flow.ts --input-file .acpx-flows/feature-input.json
  */
 
-const MAIN_SESSION = 'shipwright-feature'
+const MAIN_SESSION = { handle: 'shipwright-feature' }
 
 function exactJson(schema: string[]): string[] {
   return [
@@ -261,4 +263,4 @@ const flow = {
   ]
 }
 
-export default flow
+export default defineFlow(flow)

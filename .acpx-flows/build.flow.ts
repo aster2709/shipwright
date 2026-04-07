@@ -1,3 +1,5 @@
+import { defineFlow } from 'acpx/flows'
+
 /**
  * Shipwright Build Flow — deterministic 12-phase pipeline
  *
@@ -5,11 +7,14 @@
  * Each phase is a separate node. The graph engine guarantees
  * all phases run in order. No skipping, no early stops.
  *
- * Usage:
- *   acpx flow run .acpx-flows/build.flow.ts --input-file .acpx-flows/build-input.json
+ * Phase 1 uses dynamic Q&A: an ACP node generates a question,
+ * a prompt node collects the answer, repeated 3 rounds. The LLM
+ * decides what to ask based on the requirement and prior answers.
+ *
+ * Phase 7 uses fork/join for parallel backend + frontend.
  */
 
-const MAIN_SESSION = 'shipwright-build'
+const MAIN_SESSION = { handle: 'shipwright-build' }
 
 function exactJson(schema: string[]): string[] {
   return [
@@ -24,6 +29,14 @@ function readDoc(name: string): string {
   return `Read docs/${name} for context from previous phases.`
 }
 
+function gatherContext(outputs: any): string {
+  const parts: string[] = []
+  for (const key of ['answer_1', 'answer_2', 'answer_3']) {
+    if (outputs[key]) parts.push(outputs[key])
+  }
+  return parts.length > 0 ? `\n\nUser's answers so far:\n${parts.join('\n')}` : ''
+}
+
 const flow = {
   name: 'shipwright-build',
   run: {
@@ -34,23 +47,106 @@ const flow = {
     requireExplicitGrant: false,
     reason: 'Build pipeline needs full file and shell access'
   },
-  startAt: 'requirements',
+  startAt: 'ask_q1',
 
   nodes: {
-    // Phase 1: Requirements (approval gate)
-    requirements: {
+    // ── Phase 1: Dynamic requirements gathering (3 Q&A rounds) ──
+
+    ask_q1: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
       async prompt({ input }: any) {
+        return [
+          'You are a senior product manager gathering requirements.',
+          `The user wants to build: ${input.requirement}`,
+          '',
+          'Ask the SINGLE most important clarifying question to understand what to build.',
+          'Consider: target users, auth model, core features, data model.',
+          'Ask only ONE question. Be specific, not generic.',
+          '',
+          ...exactJson([
+            '{ "question": "..." }'
+          ])
+        ].join('\n')
+      },
+      parse: (text: string) => JSON.parse(text)
+    },
+
+    answer_1: {
+      nodeType: 'prompt' as const,
+      message: async ({ outputs }: any) => outputs.ask_q1?.question || 'Describe your requirements:',
+    },
+
+    ask_q2: {
+      nodeType: 'acp' as const,
+      session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) {
+        return [
+          'You are a senior product manager gathering requirements.',
+          `The user wants to build: ${input.requirement}`,
+          `\nPrevious Q&A:\nQ: ${outputs.ask_q1?.question}\nA: ${outputs.answer_1}`,
+          '',
+          'Based on what you know so far, ask the NEXT most important clarifying question.',
+          'Consider: deployment target, tech preferences, integrations, budget, mobile support.',
+          'Ask only ONE question that fills the biggest remaining gap.',
+          '',
+          ...exactJson([
+            '{ "question": "..." }'
+          ])
+        ].join('\n')
+      },
+      parse: (text: string) => JSON.parse(text)
+    },
+
+    answer_2: {
+      nodeType: 'prompt' as const,
+      message: async ({ outputs }: any) => outputs.ask_q2?.question || 'Any other details?',
+    },
+
+    ask_q3: {
+      nodeType: 'acp' as const,
+      session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) {
+        return [
+          'You are a senior product manager gathering requirements.',
+          `The user wants to build: ${input.requirement}`,
+          `\nPrevious Q&A:`,
+          `Q: ${outputs.ask_q1?.question}\nA: ${outputs.answer_1}`,
+          `Q: ${outputs.ask_q2?.question}\nA: ${outputs.answer_2}`,
+          '',
+          'Ask ONE final clarifying question about anything still unclear.',
+          'Consider: edge cases, auth flows, error handling, scope boundaries.',
+          '',
+          ...exactJson([
+            '{ "question": "..." }'
+          ])
+        ].join('\n')
+      },
+      parse: (text: string) => JSON.parse(text)
+    },
+
+    answer_3: {
+      nodeType: 'prompt' as const,
+      message: async ({ outputs }: any) => outputs.ask_q3?.question || 'Anything else?',
+    },
+
+    // Write PRD from all gathered context
+    write_prd: {
+      nodeType: 'acp' as const,
+      session: MAIN_SESSION,
+      async prompt({ input, outputs }: any) {
         return [
           'You are a senior product manager. Read .claude/agents/requirements-analyst.md for your full mandate.',
           '',
           `The user wants to build: ${input.requirement}`,
           '',
-          'Ask clarifying questions about: target users, auth model, data model, integrations,',
-          'performance requirements, budget constraints, deployment preferences, mobile/responsive needs.',
+          'Clarifying Q&A:',
+          `Q: ${outputs.ask_q1?.question}\nA: ${outputs.answer_1}`,
+          `Q: ${outputs.ask_q2?.question}\nA: ${outputs.answer_2}`,
+          `Q: ${outputs.ask_q3?.question}\nA: ${outputs.answer_3}`,
           '',
-          'Then write a complete PRD to docs/PRD.md.',
+          'Write a complete PRD to docs/PRD.md using all the context above.',
+          'Include: overview, personas, user stories, data model, API surface, constraints.',
           '',
           ...exactJson([
             '{ "status": "complete", "prd_path": "docs/PRD.md", "summary": "..." }'
@@ -66,7 +162,8 @@ const flow = {
       statusDetail: 'Waiting for PRD approval. Review docs/PRD.md and approve to continue.'
     },
 
-    // Phase 2: Research
+    // ── Phase 2: Research ──
+
     research: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -87,7 +184,8 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 3: Architecture (approval gate)
+    // ── Phase 3: Architecture (approval gate) ──
+
     architecture: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -109,13 +207,13 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 3 gate: user approval
     approve_architecture: {
       nodeType: 'checkpoint' as const,
       statusDetail: 'Waiting for architecture approval. Review docs/ARCHITECTURE.md and approve to continue.'
     },
 
-    // Phase 4: Design
+    // ── Phase 4: Design ──
+
     design: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -137,7 +235,8 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 5: Skeleton
+    // ── Phase 5: Skeleton ──
+
     skeleton: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -159,12 +258,11 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 5 retry on build failure
     skeleton_retry: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
       timeoutMs: 5 * 60_000,
-      async prompt({ outputs }: any) {
+      async prompt() {
         return [
           'The skeleton build failed. Read the error output and fix the issue.',
           'Run npm install && npm run dev again to verify.',
@@ -177,7 +275,8 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 6: Implementation Planning (approval gate)
+    // ── Phase 6: Implementation Planning (approval gate) ──
+
     impl_plan: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -198,16 +297,16 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 6 gate: user approval
     approve_plan: {
       nodeType: 'checkpoint' as const,
       statusDetail: 'Waiting for implementation plan approval. Review docs/IMPLEMENTATION_PLAN.md and approve.'
     },
 
-    // Phase 7: Backend implementation
+    // ── Phase 7: Parallel implementation (fork/join) ──
+
     implement_backend: {
       nodeType: 'acp' as const,
-      session: 'shipwright-backend',
+      session: { handle: 'shipwright-backend' },
       timeoutMs: 20 * 60_000,
       async prompt() {
         return [
@@ -226,10 +325,9 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 7: Frontend implementation (parallel with backend)
     implement_frontend: {
       nodeType: 'acp' as const,
-      session: 'shipwright-frontend',
+      session: { handle: 'shipwright-frontend' },
       timeoutMs: 20 * 60_000,
       async prompt() {
         return [
@@ -249,7 +347,8 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 8: Testing
+    // ── Phase 8-13: Testing through completion ──
+
     testing: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -271,7 +370,6 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 9: Review
     review: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -292,7 +390,6 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 9 fix loop: if critical issues found
     fix_review_issues: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -313,7 +410,6 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 10: Audit
     audit: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -334,7 +430,6 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 11: Deploy
     deploy: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -355,7 +450,6 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 12: QA Testing (deep code audit)
     qa_test: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
@@ -366,16 +460,8 @@ const flow = {
           readDoc('PRD.md'),
           readDoc('ARCHITECTURE.md'),
           '',
-          'Deep-audit the entire codebase:',
-          '- Trace every button/CTA handler end-to-end',
-          '- Verify auth flows (login, logout, token refresh, unauthorized access)',
-          '- Check API route validation, error handling, response shapes',
-          '- Audit state management for race conditions and stale closures',
-          '- Verify prop passing, type safety, import/export consistency',
-          '- Test edge cases: empty states, boundary values, concurrent operations',
-          '- Check API contract alignment between frontend and backend',
-          '',
-          'Read EVERY file in src/. Think adversarially. Write docs/QA-REPORT.md.',
+          'Deep-audit the entire codebase. Read EVERY file in src/. Think adversarially.',
+          'Write docs/QA-REPORT.md.',
           '',
           ...exactJson([
             '{ "status": "complete", "critical": 0, "major": 0, "minor": 0, "report_path": "docs/QA-REPORT.md" }'
@@ -385,23 +471,13 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Phase 13: Capture learnings
     capture_learnings: {
       nodeType: 'acp' as const,
       session: MAIN_SESSION,
-      async prompt({ outputs }: any) {
+      async prompt() {
         return [
-          'The build is complete. Reflect on the entire process:',
-          '',
-          '1. What patterns worked well that should be reused?',
-          '2. What caused retries or required fixes?',
-          '3. What stack/architecture decisions were made and why?',
-          '',
+          'The build is complete. Reflect on the entire process.',
           'Write a reusable skill file to .claude/skills/learnings/ with a descriptive name.',
-          'Format: SKILL.md with frontmatter (name, description) and the pattern documented.',
-          'This will help future builds avoid rediscovering the same solutions.',
-          '',
-          'Example filename: next-supabase-auth.md if the build used Next.js + Supabase auth.',
           '',
           ...exactJson([
             '{ "status": "complete", "learning_file": "...", "key_patterns": [] }'
@@ -411,7 +487,6 @@ const flow = {
       parse: (text: string) => JSON.parse(text)
     },
 
-    // Done
     complete: {
       nodeType: 'compute' as const,
       run: ({ outputs }: any) => ({
@@ -425,8 +500,14 @@ const flow = {
   },
 
   edges: [
-    // Phase 1 → approval
-    { from: 'requirements', to: 'approve_prd' },
+    // Phase 1: Dynamic Q&A → PRD → approval
+    { from: 'ask_q1', to: 'answer_1' },
+    { from: 'answer_1', to: 'ask_q2' },
+    { from: 'ask_q2', to: 'answer_2' },
+    { from: 'answer_2', to: 'ask_q3' },
+    { from: 'ask_q3', to: 'answer_3' },
+    { from: 'answer_3', to: 'write_prd' },
+    { from: 'write_prd', to: 'approve_prd' },
     { from: 'approve_prd', to: 'research' },
 
     // Phase 2 → 3 → approval
@@ -453,10 +534,8 @@ const flow = {
     // Phase 6 → approval
     { from: 'impl_plan', to: 'approve_plan' },
 
-    // Phase 7: implementation (backend then frontend)
-    { from: 'approve_plan', to: 'implement_backend' },
-    { from: 'implement_backend', to: 'implement_frontend' },
-    { from: 'implement_frontend', to: 'testing' },
+    // Phase 7: parallel implementation (fork/join)
+    { from: 'approve_plan', fork: ['implement_backend', 'implement_frontend'], join: 'testing' },
 
     // Phase 8 → 9
     { from: 'testing', to: 'review' },
@@ -472,9 +551,9 @@ const flow = {
         }
       }
     },
-    { from: 'fix_review_issues', to: 'review' }, // loop back
+    { from: 'fix_review_issues', to: 'review' },
 
-    // Phase 10 → 11 → 12
+    // Phase 10 → 11 → 12 → 13
     { from: 'audit', to: 'deploy' },
     { from: 'deploy', to: 'qa_test' },
     { from: 'qa_test', to: 'capture_learnings' },
@@ -482,4 +561,4 @@ const flow = {
   ]
 }
 
-export default flow
+export default defineFlow(flow)
