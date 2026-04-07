@@ -17,6 +17,15 @@
 
 You describe what you want to build. Shipwright orchestrates 15 specialized AI agents through a 12-phase pipeline, from requirements to deployed and QA-tested.
 
+## Prerequisites
+
+- [Claude Code](https://claude.ai/claude-code) with Claude Max plan
+- [acpx](https://github.com/openclaw/acpx) - deterministic graph execution engine
+
+```bash
+npm install -g acpx@latest
+```
+
 ## Quick Start
 
 ```bash
@@ -128,16 +137,11 @@ cmux / tmux                          (observe agents in split panes)
 
 After successful builds, reusable patterns are saved to `.claude/skills/learnings/`. Future builds reference these to avoid rediscovering the same solutions. The more you build, the better it gets.
 
-## Requirements
-
-- Claude Code with Claude Max plan
-- [acpx](https://github.com/openclaw/acpx) (`npm install -g acpx@latest`) — deterministic graph execution
-
 ### Recommended
 
-- [cmux](https://cmux.com) or tmux — split-pane agent visibility
-- [Honcho](https://honcho.dev) plugin — persistent memory across projects
-- 21st.dev Magic components — UI design inspiration
+- [cmux](https://cmux.com) or tmux - split-pane agent visibility
+- [Honcho](https://honcho.dev) plugin - persistent memory across projects
+- 21st.dev Magic components - UI design inspiration
 
 ## License
 
